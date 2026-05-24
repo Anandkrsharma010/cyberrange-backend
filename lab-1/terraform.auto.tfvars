@@ -1,0 +1,8 @@
+dc_ami_id                = "ami-01d923069932d90bf"
+client_ami_id            = "ami-0e6fac585cc8413f6"
+kali_ami_id              = "ami-08306cbe7e02ae5b7"
+subnet_router_golden_ami = "ami-0ad2097994aa8bd64"
+wazuh_ami_id             = "ami-066d12968d2f4b17f"
+headscale_server         = "https://sentinel.dedyn.io"
+windows_key_name         = "domainController"
+ssh_key_name             = "wazuh-manager"

@@ -1,0 +1,34 @@
+[Unit]
+Description=CyberRange Lab Cleanup Worker
+After=network.target postgresql.service cyberrange-api.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=cyberrange
+Group=cyberrange
+WorkingDirectory=/opt/cyberrange
+EnvironmentFile=/etc/cyberrange/api.env
+
+ExecStart=/opt/cyberrange/env/bin/python -m backend.workers.run_lab_cleanup_worker
+
+Restart=on-failure
+RestartSec=10s
+LimitNOFILE=65536
+# Destroy can take several minutes for a full Windows AD lab.
+# Must match _GRACEFUL_SHUTDOWN_TIMEOUT_S in run_lab_cleanup_worker.py.
+TimeoutStopSec=120
+KillSignal=SIGTERM
+SendSIGKILL=yes
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Route all stdout/stderr to the systemd journal.
+# Query with: journalctl -u cyberrange-lab-cleanup-worker -f
+# Filter by field: journalctl -u cyberrange-lab-cleanup-worker SYSLOG_IDENTIFIER=cyberrange-cleanup-worker
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cyberrange-cleanup-worker
+
+[Install]
+WantedBy=multi-user.target

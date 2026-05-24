@@ -1,0 +1,33 @@
+[Unit]
+Description=CyberRange Lab Provisioning Worker
+After=network.target postgresql.service cyberrange-api.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=cyberrange
+Group=cyberrange
+WorkingDirectory=/opt/cyberrange
+EnvironmentFile=/etc/cyberrange/api.env
+
+ExecStart=/opt/cyberrange/env/bin/python -m backend.workers.run_lab_worker
+
+Restart=on-failure
+RestartSec=10s
+LimitNOFILE=65536
+# Must match _GRACEFUL_SHUTDOWN_TIMEOUT_S in run_lab_worker.py.
+TimeoutStopSec=60
+KillSignal=SIGTERM
+SendSIGKILL=yes
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Route all stdout/stderr to the systemd journal.
+# Query with: journalctl -u cyberrange-lab-worker -f
+# Filter by field: journalctl -u cyberrange-lab-worker SYSLOG_IDENTIFIER=cyberrange-lab-worker
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cyberrange-lab-worker
+
+[Install]
+WantedBy=multi-user.target
