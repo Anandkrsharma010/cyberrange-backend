@@ -12,6 +12,8 @@ POLL_INTERVAL = 10
 
 LAB_MAPPING = {
     "windows": "./lab-1",
+    "wazuh": "./lab-1",
+    "aws": "./lab-2",
     "lab-2": "./lab-2",
 }
 

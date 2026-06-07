@@ -146,8 +146,13 @@ async def mark_running(session, deployment_id, outputs):
         .get("value", {})
         .get("instances", {})
     )
-    public_ip = (instances.get("subnet_router") or {}).get("public_ip")
-    private_ip = (instances.get("domain_controller") or {}).get("private_ip")
+    public_ip = None
+    private_ip = None
+    if "subnet_router" in instances:
+        public_ip = (instances.get("subnet_router") or {}).get("public_ip")
+        private_ip = (instances.get("domain_controller") or {}).get("private_ip")
+    elif "attacker" in instances:
+        private_ip = (instances.get("attacker") or {}).get("private_ip")
 
     await session.execute(
         text("""

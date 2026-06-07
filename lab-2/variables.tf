@@ -9,6 +9,7 @@ variable "vpc_cidr" {
 }
 variable "ssh_key_name" { 
     type = string 
+    default = "cyberrange-key"
 }
 variable "instance_type" { 
     default = "t3.small" 
@@ -21,9 +22,11 @@ variable "user_id" {
 }
 variable "kali_ami_id" { 
     type = string 
+    default = "ami-0b92e59275bfcc75a"
 }
 variable "target_ami_id" { 
     type = string 
+    default = "ami-03f4878755434977f"
 }
 variable "additional_tags" { 
     type = map(string) 

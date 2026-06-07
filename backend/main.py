@@ -14,9 +14,12 @@ Changes vs original:
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Depends
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -37,11 +40,13 @@ from backend.routers import (
     catalog,
     workshops,
     public_invites,
+    aws_labs,
 )
 from backend.utils.blocklist import close_redis
 from backend.utils.cloudwatch import run_metric_publisher
 from backend.utils.headscale_client import close_headscale_client
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from backend.utils.security import decode_token
 
 settings = get_settings()
 
@@ -53,6 +58,7 @@ _WORKER_STALE_THRESHOLD_S = 60
 async def lifespan(app: FastAPI):
     # ── Startup ───────────────────────────────────────────────────────────────
     setup_logging()
+    log = logging.getLogger("main")
 
     get_engine()  # warm the DB connection pool
 
@@ -69,14 +75,26 @@ async def lifespan(app: FastAPI):
         run_metric_publisher(stop_event, _pg_factory)
     )
 
+    worker_tasks = []
+    if os.environ.get("RUN_WORKERS_IN_APP") == "true":
+        log.info("Starting background workers inside FastAPI app process...")
+        from backend.workers.lab_worker import lab_provisioning_worker
+        from backend.workers.lab_cleanup_worker import lab_cleanup_worker
+        worker_tasks.append(asyncio.create_task(lab_provisioning_worker(stop_event)))
+        worker_tasks.append(asyncio.create_task(lab_cleanup_worker(stop_event)))
+
     yield
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     stop_event.set()
-    try:
-        await asyncio.wait_for(publisher_task, timeout=5.0)
-    except asyncio.TimeoutError:
-        publisher_task.cancel()
+    
+    # Wait for all background tasks to finish
+    all_tasks = [publisher_task] + worker_tasks
+    for task in all_tasks:
+        try:
+            await asyncio.wait_for(task, timeout=5.0)
+        except asyncio.TimeoutError:
+            task.cancel()
 
     await close_engine()
     await close_headscale_client()
@@ -120,6 +138,7 @@ app.include_router(billing.router)
 app.include_router(billing.webhook_router)
 app.include_router(catalog.router)
 app.include_router(workshops.router)
+app.include_router(aws_labs.router)
 
 
 # ── Health endpoints ──────────────────────────────────────────────────────────
@@ -132,6 +151,80 @@ async def root():
 @app.get("/health", tags=["ops"])
 async def health():
     return {"status": "ok"}
+
+
+class ValidateTokenRequest(BaseModel):
+    token: str
+
+
+@app.post("/api/validate-token", tags=["auth"])
+async def validate_token(
+    body: ValidateTokenRequest,
+    pg: AsyncSession = Depends(get_pg)
+):
+    try:
+        payload = await decode_token(body.token)
+    except Exception as e:
+        return {
+            "valid": False,
+            "error": "Invalid or expired token"
+        }
+    
+    user_id = payload.get("sub")
+    if not user_id:
+        return {
+            "valid": False,
+            "error": "Invalid token subject"
+        }
+
+    # Fetch user email
+    user_res = await pg.execute(
+        text("SELECT email FROM users WHERE id = :uid LIMIT 1"),
+        {"uid": user_id}
+    )
+    user_row = user_res.fetchone()
+    if not user_row:
+        return {
+            "valid": False,
+            "error": "User not found"
+        }
+    
+    email = user_row.email
+
+    # Fetch entitlement for AWS lab
+    ent_res = await pg.execute(
+        text("""
+            SELECT id, valid_until, status
+            FROM entitlements
+            WHERE user_id = :user_id AND content_id = :content_id
+            LIMIT 1
+        """),
+        {"user_id": user_id, "content_id": "c7e66c0d-d421-4f9e-a89c-5b23e7f80da3"}
+    )
+    ent_row = ent_res.fetchone()
+    
+    if not ent_row or ent_row.status != "active":
+        return {
+            "valid": False,
+            "error": "No active entitlement for AWS Security Labs"
+        }
+
+    valid_until = ent_row.valid_until
+    if valid_until:
+        if valid_until.tzinfo is None:
+            valid_until = valid_until.replace(tzinfo=timezone.utc)
+        expires_timestamp = int(valid_until.timestamp() * 1000)
+    else:
+        expires_timestamp = int((datetime.now(timezone.utc) + timedelta(days=30)).timestamp() * 1000)
+
+    return {
+        "valid": True,
+        "userId": user_id,
+        "email": email,
+        "labId": "aws-security-labs",
+        "expiresAt": expires_timestamp,
+        "purchaseId": str(ent_row.id)
+    }
 
 
 @app.get("/health/ready", tags=["ops"])

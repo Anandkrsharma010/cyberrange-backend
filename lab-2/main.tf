@@ -49,7 +49,7 @@ resource "aws_subnet" "lab" {
 
 # --- SGs ---
 module "security_groups" {
-  source      = "./modules/security_groups"
+  source      = "./modules/security-groups"
   vpc_id      = local.vpc_id
   subnet_cidr = local.subnet_cidr
   lab_id      = random_string.lab_id.result
@@ -57,7 +57,7 @@ module "security_groups" {
 
 # --- Machines ---
 module "attack_machine" {
-  source                 = "./modules/generic_machine"
+  source                 = "./modules/machine1"
   ami_id                 = var.kali_ami_id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.lab.id
@@ -72,7 +72,7 @@ module "attack_machine" {
 }
 
 module "linux_target" {
-  source                 = "./modules/generic_machine"
+  source                 = "./modules/machine1"
   ami_id                 = var.target_ami_id
   instance_type          = var.instance_type
   subnet_id              = aws_subnet.lab.id

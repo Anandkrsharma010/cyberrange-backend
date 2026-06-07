@@ -130,6 +130,36 @@ def _build_access_details_payload(
             "After VPN is connected, use machine private IPs shown below.",
             "Use credentials from your lab resources or instructor-provided details.",
         ]
+    elif normalized_lab_type == "aws":
+        role_specs = [
+            ("attacker", "Kali Attacker Machine", "SSH", 22),
+            ("target", "Linux Target Instance", "SSH", 22),
+        ]
+        for role_key, label, protocol, port in role_specs:
+            inst = instances.get(role_key) if isinstance(instances, dict) else None
+            if not isinstance(inst, dict):
+                continue
+            private_ip = inst.get("private_ip")
+            public_ip = inst.get("public_ip")
+            host = private_ip or public_ip
+            machines.append(
+                {
+                    "role": role_key,
+                    "label": label,
+                    "protocol": protocol,
+                    "port": port,
+                    "host": host,
+                    "private_ip": private_ip,
+                    "public_ip": public_ip if is_owner else None,
+                    "credential_label": "Use the credentials provided in your lab resources.",
+                }
+            )
+        access_model = "tailscale"
+        instructions = [
+            "Open VPN Join section and run your Tailscale join command first.",
+            "After VPN is connected, use machine private IPs shown below.",
+            "Use credentials from your lab resources.",
+        ]
     else:
         instructions = [
             "Access details are available once the deployment is running.",

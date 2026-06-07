@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: cyberrange-api
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    envVars:
+      - key: RUN_WORKERS_IN_APP
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cyberrange-db
+          property: connectionString
+      - key: MIGRATION_DATABASE_URL
+        fromDatabase:
+          name: cyberrange-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: cyberrange-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        value: local-dev
+      - key: HEADSCALE_API_KEY
+        value: dummy
+      - key: HEADSCALE_API_URL
+        value: http://localhost:8080
+      - key: RAZORPAY_KEY_ID
+        value: rzp_test_SslKiL78qiKwa5
+      - key: RAZORPAY_KEY_SECRET
+        value: J0RXiQsUaLPwSVyBaQ8UzMZS
+      - key: RAZORPAY_WEBHOOK_SECRET
+        value: dummy_webhook_secret
+
+databases:
+  - name: cyberrange-db
+    plan: free
+
+interfaces:
+  - type: redis
+    name: cyberrange-redis
+    plan: free
