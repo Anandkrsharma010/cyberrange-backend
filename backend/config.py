@@ -90,6 +90,23 @@ class Settings(BaseSettings):
             return v.replace("postgresql://", "postgresql+asyncpg://", 1)
         return v
 
+    @field_validator("CORS_ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            v_stripped = v.strip()
+            if not v_stripped:
+                return []
+            if v_stripped.startswith("[") and v_stripped.endswith("]"):
+                import json
+                try:
+                    return json.loads(v_stripped)
+                except Exception:
+                    pass
+            return [x.strip() for x in v_stripped.split(",") if x.strip()]
+        return v
+
+
     def resolved_headscale_login_server(self) -> str:
         if self.HEADSCALE_LOGIN_SERVER and self.HEADSCALE_LOGIN_SERVER.strip():
             return self.HEADSCALE_LOGIN_SERVER.strip().rstrip("/")
