@@ -157,7 +157,7 @@ app.include_router(aws_labs.router)
 
 @app.get("/", tags=["ops"])
 async def root():
-    return {"status": "ok", "service": "CyberRange API"}
+    return {"status": "ok", "service": "CyberRange API", "version": "84c80db"}
 
 
 @app.get("/health", tags=["ops"])
