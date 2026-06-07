@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     HEADSCALE_LOGIN_SERVER: str = ""
     AWS_REGION: str = "ap-south-1"
 
-    CORS_ALLOWED_ORIGINS: list[str] = []
+    CORS_ALLOWED_ORIGINS: str = ""
 
     RATE_LIMIT_AUTH: str = "10/minute"
     RATE_LIMIT_DEPLOY: str = "5/minute"
@@ -88,22 +88,6 @@ class Settings(BaseSettings):
     def convert_postgresql_scheme(cls, v: str) -> str:
         if v and v.startswith("postgresql://"):
             return v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return v
-
-    @field_validator("CORS_ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v):
-        if isinstance(v, str):
-            v_stripped = v.strip()
-            if not v_stripped:
-                return []
-            if v_stripped.startswith("[") and v_stripped.endswith("]"):
-                import json
-                try:
-                    return json.loads(v_stripped)
-                except Exception:
-                    pass
-            return [x.strip() for x in v_stripped.split(",") if x.strip()]
         return v
 
 

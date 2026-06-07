@@ -118,13 +118,25 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
 if settings.CORS_ALLOWED_ORIGINS:
+    import json
+    origins = []
+    val = settings.CORS_ALLOWED_ORIGINS.strip()
+    if val.startswith("[") and val.endswith("]"):
+        try:
+            origins = json.loads(val)
+        except Exception:
+            pass
+    if not origins:
+        origins = [x.strip() for x in val.split(",") if x.strip()]
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ALLOWED_ORIGINS,
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(auth.router)
