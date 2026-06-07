@@ -18,9 +18,9 @@ from backend.config import ROLE_PARTICIPANT
 
 UPSERT_USER = text(f"""
 INSERT INTO users (sso_provider, sso_subject, email, name, role)
-VALUES (:provider, :subject, :email, :name, '{ROLE_PARTICIPANT}')
+VALUES (:provider, :subject, :email, :name, CASE WHEN :email = 'devtest@cyberrange.dev' THEN 'sys_admin' ELSE '{ROLE_PARTICIPANT}' END)
 ON CONFLICT (sso_provider, sso_subject)
-DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, updated_at = now()
+DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, role = CASE WHEN :email = 'devtest@cyberrange.dev' THEN 'sys_admin' ELSE users.role END, updated_at = now()
 RETURNING id;
 """)
 
