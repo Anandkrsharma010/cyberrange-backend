@@ -115,6 +115,11 @@ if settings.ENABLE_DOCS:
         """DEV ONLY — upsert the admin test user and return a JWT."""
         email = "devtest@cyberrange.dev"
         user_id = await upsert_user(pg, "dev", "dev-local-user", email, "Dev Tester")
+        # Ensure the test admin user has the sys_admin role
+        await pg.execute(
+            text("UPDATE users SET role = 'sys_admin' WHERE id = :user_id"),
+            {"user_id": user_id}
+        )
         token, jti = issue_token(user_id, "dev")
         await log_token_event(
             pg, user_id=str(user_id), jti=jti, event="issued",
