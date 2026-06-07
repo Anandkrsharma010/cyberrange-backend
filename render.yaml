@@ -35,11 +35,11 @@ services:
       - key: RAZORPAY_WEBHOOK_SECRET
         value: dummy_webhook_secret
 
-databases:
-  - name: cyberrange-db
-    plan: free
-
-interfaces:
   - type: redis
     name: cyberrange-redis
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: cyberrange-db
     plan: free
