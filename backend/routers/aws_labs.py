@@ -64,50 +64,22 @@ async def get_aws_lab_status(
 
     is_expired = ent_status == "expired" or (valid_until is not None and valid_until < now_utc)
 
-    # 2. Query verification/access state
-    ver_res = await pg.execute(
-        text("""
-            SELECT verification_code, code_sent_at, code_entered, code_entered_at, access_granted, expires_at
-            FROM aws_lab_verifications
-            WHERE user_id = :user_id
-            LIMIT 1
-        """),
-        {"user_id": current_user.id}
-    )
-    ver_row = ver_res.fetchone()
-
-    code_sent = False
-    code_sent_at = None
-    code_entered = False
-    code_entered_at = None
-    access_granted = False
-
-    if ver_row:
-        code_sent = ver_row.verification_code is not None
-        code_sent_at = ver_row.code_sent_at
-        code_entered = ver_row.code_entered
-        code_entered_at = ver_row.code_entered_at
-        access_granted = ver_row.access_granted
-
-        if code_sent_at and code_sent_at.tzinfo is None:
-            code_sent_at = code_sent_at.replace(tzinfo=timezone.utc)
-        if code_entered_at and code_entered_at.tzinfo is None:
-            code_entered_at = code_entered_at.replace(tzinfo=timezone.utc)
-
+    # 2. Grant direct access upon active entitlement (bypassing email code verification)
     return {
         "success": True,
         "data": {
             "purchased": True,
-            "codeSent": code_sent,
-            "codeSentAt": code_sent_at.isoformat() if code_sent_at else None,
-            "codeEntered": code_entered,
-            "codeEnteredAt": code_entered_at.isoformat() if code_entered_at else None,
-            "accessGranted": access_granted,
+            "codeSent": True,
+            "codeSentAt": now_utc.isoformat(),
+            "codeEntered": True,
+            "codeEnteredAt": now_utc.isoformat(),
+            "accessGranted": not is_expired,
             "subscriptionExpires": valid_until.isoformat() if valid_until else None,
             "isExpired": is_expired,
             "purchaseId": str(ent_row.id)
         }
     }
+
 
 
 @router.post("/resend-code")
