@@ -83,6 +83,13 @@ class Settings(BaseSettings):
             )
         return v
 
+    @field_validator("DATABASE_URL", "MIGRATION_DATABASE_URL")
+    @classmethod
+    def convert_postgresql_scheme(cls, v: str) -> str:
+        if v and v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
+
     def resolved_headscale_login_server(self) -> str:
         if self.HEADSCALE_LOGIN_SERVER and self.HEADSCALE_LOGIN_SERVER.strip():
             return self.HEADSCALE_LOGIN_SERVER.strip().rstrip("/")
